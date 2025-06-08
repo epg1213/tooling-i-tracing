@@ -1,28 +1,31 @@
 # main.py
 import AbuseIPDBClient
-import stringdiff
+import Levenshtein
 import Logger
 import certstream
 
-logger = Logger.Logger()
-trusted_domain = "pepito.com"
+LOGGER = Logger.Logger() # overload with True to print logs
+TRUSTED_DOMAIN = "pepito.com" # change here and put your DN
 
 def acknowledge(domain, authority):
-    stringdiff_score = stringdiff.get_score(domain, trusted_domain)
-    if stringdiff_score > 4:
+    levenshtein_score = Levenshtein.distance(domain, TRUSTED_DOMAIN)
+    if levenshtein_score > 4:
         return
     abuseipdb_score = AbuseIPDBClient.get_score(domain)
     trust_score = 0
-    if not "letsencrypt" in authority:
+    if not "letsencrypt" in authority: # we don't trust let's Encrypt
         trust_score += 20
-    trust_score += stringdiff_score * 10
-    trust_score += 100 - abuseipdb_score
+    # the more operations needed to transform into our domain,
+    # the more trusted the domain gets
+    trust_score += levenshtein_score * 10
+    # trusted domains with low abuseIPDB score get high trust score
+    trust_score += 100 - abuseipdb_score 
     if trust_score<30:
-        logger.high(domain, authority)
+        LOGGER.high(domain, authority)
     elif trust_score<50:
-        logger.medium(domain, authority)
+        LOGGER.medium(domain, authority)
     else:
-        logger.low(domain, authority)
+        LOGGER.low(domain, authority)
 
 def callback(message, context):
     if message['message_type'] != "certificate_update":
@@ -34,9 +37,8 @@ def callback(message, context):
 
 def main():
     certstream_url="wss://certstream.calidog.io/"
-    #certstream.listen_for_events(callback, url=certstream_url)
-    for domain in ["pepito.org", "forza.fr", "pepite.com"]:
-        acknowledge(domain, "letsencrypt")
+    acknowledge("pipiti.com", "none")
+    certstream.listen_for_events(callback, url=certstream_url)
 
 if __name__ == "__main__":
     main()
