@@ -37,7 +37,6 @@ def callback(message, context):
 
 def main():
     certstream_url="wss://certstream.calidog.io/"
-    acknowledge("pipiti.com", "none")
     certstream.listen_for_events(callback, url=certstream_url)
 
 if __name__ == "__main__":
